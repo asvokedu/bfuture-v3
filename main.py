@@ -29,8 +29,12 @@ def wait_until_next_candle(interval):
         return
 
     wait_seconds = (next_candle - now).total_seconds()
-    print(f"⏳ Menunggu {int(wait_seconds)} detik hingga candle baru ({interval}) pada {next_candle.strftime('%H:%M:%S')} UTC...")
-    time.sleep(wait_seconds)
+    while wait_seconds > 0:
+        mins, secs = divmod(int(wait_seconds), 60)
+        print(f"\r⏳ Menunggu candle baru untuk interval {interval}: {mins:02d}:{secs:02d} ", end="", flush=True)
+        time.sleep(1)
+        wait_seconds -= 1
+    print(f"\n✅ Mulai analisa pada awal candle {interval}")
 
 def analyze_symbol(symbol):
     for interval in INTERVALS:
@@ -77,8 +81,8 @@ def analyze_symbol(symbol):
 def main_loop():
     while True:
         print(f"\n🕒 Sinkronisasi waktu pada {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        
-        # Tunggu hingga waktu candle baru
+
+        # Tunggu hingga waktu candle baru untuk interval 1h (utama)
         wait_until_next_candle("1h")
 
         print(f"\n🚀 Mulai analisa jam {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
