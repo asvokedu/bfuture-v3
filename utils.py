@@ -1,40 +1,24 @@
-# ==== utils.py ====
-import requests
+# ===== utils.py =====
 import pandas as pd
 import numpy as np
+import requests
 import ta
 
-def fetch_valid_usdt_symbols():
-    try:
-        url = "https://api.binance.com/api/v3/exchangeInfo"
-        response = requests.get(url)
-        data = response.json()
-        symbols = [s['symbol'] for s in data['symbols'] if s['quoteAsset'] == 'USDT' and s['status'] == 'TRADING' and s['isSpotTradingAllowed']]
-        return symbols
-    except Exception as e:
-        print(f"❌ Gagal fetch simbol dari Binance: {e}")
-        return []
-
-def fetch_binance_data(symbol, interval, limit=100):
+def fetch_binance_data(symbol, interval, limit=500):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
     try:
-        response = requests.get(url)
-        response.raise_for_status()
+        response = requests.get(url, timeout=10)
         data = response.json()
-        if isinstance(data, dict) and "code" in data:
+        if "code" in data:
             raise Exception(f"Binance API error: {data.get('msg')}")
+        df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close", "volume", "close_time", "qav", "num_trades", "taker_base", "taker_quote", "ignore"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+        df.set_index("timestamp", inplace=True)
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+        return df
     except Exception as e:
-        print(f"❌ Error ambil data {symbol} {interval}: {e}")
+        print(f"❌ Gagal fetch data Binance untuk {symbol}: {e}")
         return None
-
-    df = pd.DataFrame(data, columns=[
-        'timestamp', 'open', 'high', 'low', 'close', 'volume',
-        'close_time', 'quote_asset_volume', 'num_trades',
-        'taker_buy_base', 'taker_buy_quote', 'ignore'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    df.set_index('timestamp', inplace=True)
-    df = df.astype(float, errors='ignore')
-    return df
 
 def calculate_technical_indicators(df):
     df = df.copy()
